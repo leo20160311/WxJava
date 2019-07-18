@@ -42,7 +42,7 @@ public class WxCpUserServiceImplTest {
     WxCpUser user = new WxCpUser();
     user.setUserId(userId);
     user.setName("Some Woman");
-    user.setDepartIds(new Integer[]{2});
+    user.setDepartIds(new Long[]{2L});
     user.setEmail("none@none.com");
     user.setGender(Gender.FEMALE);
     user.setMobile("13560084979");
@@ -93,7 +93,7 @@ public class WxCpUserServiceImplTest {
   @Test
   public void testInvite() throws Exception {
     WxCpInviteResult result = this.wxCpService.getUserService().invite(
-      Lists.newArrayList(userId), null,null);
+      Lists.newArrayList(userId), null, null);
     System.out.println(result);
   }
 
@@ -111,10 +111,5 @@ public class WxCpUserServiceImplTest {
     assertNotNull(result);
   }
 
-  @Test
-  public void testGetExternalContact() throws WxErrorException {
-    WxCpUserExternalContactInfo result = this.wxCpService.getUserService().getExternalContact(userId);
-    System.out.println(result);
-    assertNotNull(result);
-  }
+
 }

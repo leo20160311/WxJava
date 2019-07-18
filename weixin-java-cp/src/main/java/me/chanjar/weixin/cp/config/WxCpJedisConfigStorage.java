@@ -2,6 +2,7 @@ package me.chanjar.weixin.cp.config;
 
 import me.chanjar.weixin.common.bean.WxAccessToken;
 import me.chanjar.weixin.common.util.http.apache.ApacheHttpClientBuilder;
+import me.chanjar.weixin.cp.constant.WxCpApiPathConsts;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
@@ -9,26 +10,21 @@ import redis.clients.jedis.JedisPoolConfig;
 import java.io.File;
 
 /**
- * Jedis client implementor for wechat config storage.
  * <pre>
- *    使用说明：本实现仅供参考，并不完整，
+ *    使用说明：本实现仅供参考，并不完整.
  *    比如为减少项目依赖，未加入redis分布式锁的实现，如有需要请自行实现。
  * </pre>
  *
  * @author gaigeshen
  */
 public class WxCpJedisConfigStorage implements WxCpConfigStorage {
-
-  /**
-   * Redis keys here
-   */
   private static final String ACCESS_TOKEN_KEY = "WX_CP_ACCESS_TOKEN";
   private static final String ACCESS_TOKEN_EXPIRES_TIME_KEY = "WX_CP_ACCESS_TOKEN_EXPIRES_TIME";
   private static final String JS_API_TICKET_KEY = "WX_CP_JS_API_TICKET";
   private static final String JS_API_TICKET_EXPIRES_TIME_KEY = "WX_CP_JS_API_TICKET_EXPIRES_TIME";
-  /**
-   * Redis clients pool
-   */
+  private static final String AGENT_JSAPI_TICKET_KEY = "WX_CP_AGENT_%s_JSAPI_TICKET";
+  private static final String AGENT_JSAPI_TICKET_EXPIRES_TIME_KEY = "WX_CP_AGENT_%s_JSAPI_TICKET_EXPIRES_TIME";
+
   private final JedisPool jedisPool;
   private volatile String corpId;
   private volatile String corpSecret;
@@ -43,10 +39,25 @@ public class WxCpJedisConfigStorage implements WxCpConfigStorage {
   private volatile File tmpDirFile;
   private volatile ApacheHttpClientBuilder apacheHttpClientBuilder;
 
+  protected volatile String baseApiUrl;
+
+  @Override
+  public void setBaseApiUrl(String baseUrl) {
+    this.baseApiUrl = baseUrl;
+  }
+
+  @Override
+  public String getApiUrl(String path) {
+    if (baseApiUrl == null) {
+      baseApiUrl = WxCpApiPathConsts.DEFAULT_CP_BASE_URL;
+    }
+    return baseApiUrl + path;
+  }
+
   public WxCpJedisConfigStorage(JedisPool jedisPool) {
     this.jedisPool = jedisPool;
   }
-  
+
   public WxCpJedisConfigStorage(String host, int port) {
     jedisPool = new JedisPool(host, port);
   }
@@ -83,8 +94,7 @@ public class WxCpJedisConfigStorage implements WxCpConfigStorage {
       String expiresTimeStr = jedis.get(ACCESS_TOKEN_EXPIRES_TIME_KEY);
 
       if (expiresTimeStr != null) {
-        Long expiresTime = Long.parseLong(expiresTimeStr);
-        return System.currentTimeMillis() > expiresTime;
+        return System.currentTimeMillis() > Long.parseLong(expiresTimeStr);
       }
 
       return true;
@@ -123,17 +133,15 @@ public class WxCpJedisConfigStorage implements WxCpConfigStorage {
 
   @Override
   public boolean isJsapiTicketExpired() {
-
     try (Jedis jedis = this.jedisPool.getResource()) {
       String expiresTimeStr = jedis.get(JS_API_TICKET_EXPIRES_TIME_KEY);
 
       if (expiresTimeStr != null) {
-        Long expiresTime = Long.parseLong(expiresTimeStr);
+        long expiresTime = Long.parseLong(expiresTimeStr);
         return System.currentTimeMillis() > expiresTime;
       }
 
       return true;
-
     }
   }
 
@@ -146,11 +154,46 @@ public class WxCpJedisConfigStorage implements WxCpConfigStorage {
 
   @Override
   public synchronized void updateJsapiTicket(String jsapiTicket, int expiresInSeconds) {
-
     try (Jedis jedis = this.jedisPool.getResource()) {
       jedis.set(JS_API_TICKET_KEY, jsapiTicket);
-
       jedis.set(JS_API_TICKET_EXPIRES_TIME_KEY,
+        (System.currentTimeMillis() + (expiresInSeconds - 200) * 1000L + ""));
+    }
+
+  }
+
+  @Override
+  public String getAgentJsapiTicket() {
+    try (Jedis jedis = this.jedisPool.getResource()) {
+      return jedis.get(String.format(AGENT_JSAPI_TICKET_KEY, agentId));
+    }
+  }
+
+  @Override
+  public boolean isAgentJsapiTicketExpired() {
+    try (Jedis jedis = this.jedisPool.getResource()) {
+      String expiresTimeStr = jedis.get(String.format(AGENT_JSAPI_TICKET_EXPIRES_TIME_KEY, agentId));
+
+      if (expiresTimeStr != null) {
+        return System.currentTimeMillis() > Long.parseLong(expiresTimeStr);
+      }
+
+      return true;
+    }
+  }
+
+  @Override
+  public void expireAgentJsapiTicket() {
+    try (Jedis jedis = this.jedisPool.getResource()) {
+      jedis.set(String.format(AGENT_JSAPI_TICKET_EXPIRES_TIME_KEY, agentId), "0");
+    }
+  }
+
+  @Override
+  public void updateAgentJsapiTicket(String jsapiTicket, int expiresInSeconds) {
+    try (Jedis jedis = this.jedisPool.getResource()) {
+      jedis.set(String.format(AGENT_JSAPI_TICKET_KEY, agentId), jsapiTicket);
+      jedis.set(String.format(AGENT_JSAPI_TICKET_EXPIRES_TIME_KEY, agentId),
         (System.currentTimeMillis() + (expiresInSeconds - 200) * 1000L + ""));
     }
 

@@ -1,10 +1,11 @@
 package me.chanjar.weixin.cp.config;
 
-import java.io.File;
-
 import me.chanjar.weixin.common.bean.WxAccessToken;
 import me.chanjar.weixin.common.util.http.apache.ApacheHttpClientBuilder;
+import me.chanjar.weixin.cp.constant.WxCpApiPathConsts;
 import me.chanjar.weixin.cp.util.json.WxCpGsonBuilder;
+
+import java.io.File;
 
 /**
  * 基于内存的微信配置provider，在实际生产环境中应该将这些配置持久化
@@ -12,7 +13,6 @@ import me.chanjar.weixin.cp.util.json.WxCpGsonBuilder;
  * @author Daniel Qian
  */
 public class WxCpInMemoryConfigStorage implements WxCpConfigStorage {
-
   protected volatile String corpId;
   protected volatile String corpSecret;
 
@@ -32,9 +32,27 @@ public class WxCpInMemoryConfigStorage implements WxCpConfigStorage {
   protected volatile String jsapiTicket;
   protected volatile long jsapiTicketExpiresTime;
 
+  protected volatile String agentJsapiTicket;
+  protected volatile long agentJsapiTicketExpiresTime;
+
   protected volatile File tmpDirFile;
 
   private volatile ApacheHttpClientBuilder apacheHttpClientBuilder;
+
+  protected volatile String baseApiUrl;
+
+  @Override
+  public void setBaseApiUrl(String baseUrl) {
+    this.baseApiUrl = baseUrl;
+  }
+
+  @Override
+  public String getApiUrl(String path) {
+    if (baseApiUrl == null) {
+      baseApiUrl = WxCpApiPathConsts.DEFAULT_CP_BASE_URL;
+    }
+    return baseApiUrl + path;
+  }
 
   @Override
   public String getAccessToken() {
@@ -93,6 +111,28 @@ public class WxCpInMemoryConfigStorage implements WxCpConfigStorage {
     this.jsapiTicket = jsapiTicket;
     // 预留200秒的时间
     this.jsapiTicketExpiresTime = System.currentTimeMillis() + (expiresInSeconds - 200) * 1000L;
+  }
+
+  @Override
+  public String getAgentJsapiTicket() {
+    return this.agentJsapiTicket;
+  }
+
+  @Override
+  public boolean isAgentJsapiTicketExpired() {
+    return System.currentTimeMillis() > this.agentJsapiTicketExpiresTime;
+  }
+
+  @Override
+  public void expireAgentJsapiTicket() {
+    this.agentJsapiTicketExpiresTime = 0;
+  }
+
+  @Override
+  public void updateAgentJsapiTicket(String jsapiTicket, int expiresInSeconds) {
+    this.agentJsapiTicket = jsapiTicket;
+    // 预留200秒的时间
+    this.agentJsapiTicketExpiresTime = System.currentTimeMillis() + (expiresInSeconds - 200) * 1000L;
   }
 
   @Override

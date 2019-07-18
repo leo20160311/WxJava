@@ -1,12 +1,12 @@
 package me.chanjar.weixin.cp.api;
 
-import java.util.List;
-import java.util.Map;
-
 import me.chanjar.weixin.common.error.WxErrorException;
 import me.chanjar.weixin.cp.bean.WxCpInviteResult;
 import me.chanjar.weixin.cp.bean.WxCpUser;
 import me.chanjar.weixin.cp.bean.WxCpUserExternalContactInfo;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * <pre>
@@ -17,6 +17,7 @@ import me.chanjar.weixin.cp.bean.WxCpUserExternalContactInfo;
  * @author <a href="https://github.com/binarywang">Binary Wang</a>
  */
 public interface WxCpUserService {
+
   /**
    * <pre>
    *   用在二次验证的时候.
@@ -148,4 +149,6 @@ public interface WxCpUserService {
    * @param userId 外部联系人的userid
    */
   WxCpUserExternalContactInfo getExternalContact(String userId) throws WxErrorException;
+
+
 }
